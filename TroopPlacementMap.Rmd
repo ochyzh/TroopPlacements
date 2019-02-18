@@ -1,0 +1,454 @@
+---
+title: "TroopPlacementMap"
+author: "Olga Chyzh"
+date: "February 15, 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning = FALSE,fig.cap = "...")
+```
+
+Load Packages:
+```{r}
+rm(list=ls())
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(mapdata)
+library(lubridate)
+library(leaflet)
+library(cshapes)
+library(tidyverse)
+library(magrittr)
+
+#install.packages("devtools")
+library(devtools)
+install_github("CSAFE-ISU/csafethemes")
+library(png)
+library(grid)
+
+```
+Creating custom geoms to use risk pieces as markers:
+```{r}
+bluecanon <- readPNG("./pics/lightbluecanon1.png")
+redcanon <- readPNG("./pics/redcanon1.png")
+blkhorse <- readPNG("./pics/blackhorse1.png")
+grnhorse <- readPNG("./pics/greenhorse.png")
+
+#install.packages("devtools")
+#library(devtools)
+#install_github("CSAFE-ISU/csafethemes")
+# canon geom for an interested REU student.
+canonGrob <- function(x, y, size) {
+
+  grid::rasterGrob(x             = x,
+                   y             = y,
+                   image         = bluecanon,
+                   default.units = "native",
+                   height        = size,
+                   width         = size)
+}
+
+
+
+Geomcanon <- ggplot2::ggproto("Geomcanon", ggplot2::Geom,
+
+                              #draw_panel = function(., data, scales, coordinates, ...) {
+                              draw_panel = function(data, panel_scales, coord, na.rm = FALSE) {
+                                coords = coord$transform(data, panel_scales)
+                                ggplot2:::ggname("geom_bluecanon",
+                                                 canonGrob(coords$x, coords$y, coords$size)
+                                )
+                              },
+
+                              non_missing_aes = c("size", "theme"),
+                              required_aes = c("x", "y"),
+                              default_aes = ggplot2::aes(size=.1),
+
+                              icon = function(.){}, # a grob representing the geom for the webpage
+
+                              desc_params = list( # description of the (optional) parameters of draw
+                              ),
+
+                              seealso = list(
+                                geom_point = ggplot2::GeomPoint$desc
+                              ),
+
+                              examples = function(.) {
+                              }
+)
+
+geom_bluecanon <- function(mapping = NULL, data = NULL, stat = "identity",
+                       position = "identity", na.rm = FALSE,
+                       show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = Geomcanon,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      na.rm = na.rm,
+      ...
+    )
+  )
+}
+
+
+#Red
+redcanonGrob <- function(x, y, size) {
+
+  grid::rasterGrob(x             = x,
+                   y             = y,
+                   image         = redcanon,
+                   default.units = "native",
+                   height        = size,
+                   width         = size)
+}
+
+
+
+Geomredcanon <- ggplot2::ggproto("Geomredcanon", ggplot2::Geom,
+
+                              #draw_panel = function(., data, scales, coordinates, ...) {
+                              draw_panel = function(data, panel_scales, coord, na.rm = FALSE) {
+                                coords = coord$transform(data, panel_scales)
+                                ggplot2:::ggname("geom_redcanon",
+                                                 redcanonGrob(coords$x, coords$y, coords$size)
+                                )
+                              },
+
+                              non_missing_aes = c("size", "theme"),
+                              required_aes = c("x", "y"),
+                              default_aes = ggplot2::aes(size=.1),
+
+                              icon = function(.){}, # a grob representing the geom for the webpage
+
+                              desc_params = list( # description of the (optional) parameters of draw
+                              ),
+
+                              seealso = list(
+                                geom_point = ggplot2::GeomPoint$desc
+                              ),
+
+                              examples = function(.) {
+                              }
+)
+
+geom_redcanon <- function(mapping = NULL, data = NULL, stat = "identity",
+                       position = "identity", na.rm = FALSE,
+                       show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = Geomredcanon,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      na.rm = na.rm,
+      ...
+    )
+  )
+}
+
+#Black Horse
+
+blkhorseGrob <- function(x, y, size) {
+
+  grid::rasterGrob(x             = x,
+                   y             = y,
+                   image         = blkhorse,
+                   default.units = "native",
+                   height        = size,
+                   width         = size)
+}
+
+
+
+Geomblkhorse <- ggplot2::ggproto("Geomblkhorse", ggplot2::Geom,
+
+                              #draw_panel = function(., data, scales, coordinates, ...) {
+                              draw_panel = function(data, panel_scales, coord, na.rm = FALSE) {
+                                coords = coord$transform(data, panel_scales)
+                                ggplot2:::ggname("geom_blkhorse",
+                                                 blkhorseGrob(coords$x, coords$y, coords$size)
+                                )
+                              },
+
+                              non_missing_aes = c("size", "theme"),
+                              required_aes = c("x", "y"),
+                              default_aes = ggplot2::aes(size=.1),
+
+                              icon = function(.){}, # a grob representing the geom for the webpage
+
+                              desc_params = list( # description of the (optional) parameters of draw
+                              ),
+
+                              seealso = list(
+                                geom_point = ggplot2::GeomPoint$desc
+                              ),
+
+                              examples = function(.) {
+                              }
+)
+
+geom_blkhorse <- function(mapping = NULL, data = NULL, stat = "identity",
+                       position = "identity", na.rm = FALSE,
+                       show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = Geomblkhorse,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      na.rm = na.rm,
+      ...
+    )
+  )
+}
+
+#Green horse
+
+grnhorseGrob <- function(x, y, size) {
+
+  grid::rasterGrob(x             = x,
+                   y             = y,
+                   image         = grnhorse,
+                   default.units = "native",
+                   height        = size,
+                   width         = size)
+}
+
+
+
+Geomgrnhorse <- ggplot2::ggproto("Geomgrnhorse", ggplot2::Geom,
+
+                              #draw_panel = function(., data, scales, coordinates, ...) {
+                              draw_panel = function(data, panel_scales, coord, na.rm = FALSE) {
+                                coords = coord$transform(data, panel_scales)
+                                ggplot2:::ggname("geom_grnhorse",
+                                                 grnhorseGrob(coords$x, coords$y, coords$size)
+                                )
+                              },
+
+                              non_missing_aes = c("size", "theme"),
+                              required_aes = c("x", "y"),
+                              default_aes = ggplot2::aes(size=.1),
+
+                              icon = function(.){}, # a grob representing the geom for the webpage
+
+                              desc_params = list( # description of the (optional) parameters of draw
+                              ),
+
+                              seealso = list(
+                                geom_point = ggplot2::GeomPoint$desc
+                              ),
+
+                              examples = function(.) {
+                              }
+)
+
+geom_grnhorse <- function(mapping = NULL, data = NULL, stat = "identity",
+                       position = "identity", na.rm = FALSE,
+                       show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = Geomgrnhorse,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      na.rm = na.rm,
+      ...
+    )
+  )
+}
+
+
+```
+
+
+
+
+
+Make a 2005 map:
+```{r}
+world2005<-cshp(as.Date("2005-1-1"), useGW=FALSE)
+p <- ggplot() +
+  geom_polygon(data=world2005, aes(x=long, y=lat, group=group), fill="grey85", color="white")
+#geon_polygon is making the base boarder for world map. By assigning group, we make R draw lines only withing each country.
+p
+
+worldmap2005 <- p+theme(axis.text=element_blank(),
+              axis.ticks=element_blank(),
+              axis.title.x=element_blank(),
+              axis.title.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.border = element_blank(),
+              panel.background = element_blank())
+#We made better map without grey background and useless longitude and latitude axes.
+worldmap2005
+```
+
+Get troops data and the coordinates for capitals in 1985:
+```{r}
+capitals2005<-world2005@data
+
+
+troops2005<-troops[troops$year==2005,]
+#Generate a cname variable to fix some country names:
+troops2005$cname<-troops2005$country
+
+levels(troops2005$cname)[levels(troops2005$cname)=="Ivory Coast"]<-"Cote d'Ivoire"
+
+Germany<-cbind.data.frame(major=c("2","200","220"), cname="Germany")
+SouthKorea<-cbind.data.frame(major=c("2"), cname="South Korea")
+
+troops2005<-rbind(subset(troops2005, select=c("major","cname") ), Germany, SouthKorea)
+troops2005<-left_join(troops2005, capitals2005, by=c("cname"="CNTRY_NAME"))
+troops2005$maj_name[troops2005$major==2]<-"US"
+troops2005$maj_name[troops2005$major==365]<-"Soviet Union"
+troops2005$maj_name[troops2005$major==200]<-"UK"
+troops2005$maj_name[troops2005$major==220]<-"France"
+
+troops2005$long_jit<-troops2005$CAPLONG
+troops2005$long_jit[troops2005$cname=="Germany" & troops2005$major==2]<-troops2005$long_jit[troops2005$cname=="Germany" & troops2005$major==2]-1
+
+troops2005$long_jit[troops2005$cname=="Cuba" & troops2005$major==2]<-troops2005$long_jit[troops2005$cname=="Cuba" & troops2005$major==2]+4
+
+
+troops2005$lat_jit<-troops2005$CAPLAT
+troops2005$long_jit[troops2005$cname=="Germany" & troops2005$major==220]<-troops2005$long_jit[troops2005$cname=="Germany" & troops2005$major==220]-3
+
+
+
+
+```
+
+
+Make the map:
+```{r}
+worldmap2005 +
+  geom_bluecanon(aes(x=long_jit, y=lat_jit ), data=troops2005[troops2005$major==2,], size=.03) +
+  geom_redcanon(aes(x=long_jit, y=lat_jit), data=troops2005[troops2005$major==365,] ,size=.03) +
+  geom_blkhorse(aes(x=long_jit, y=lat_jit), data=troops2005[troops2005$major==200,] ,size=.03) +
+  geom_grnhorse(aes(x=long_jit, y=lat_jit), data=troops2005[troops2005$major==220,] ,size=.03)
+ggsave("map_2005.eps", width = 6)
+ggsave("map_2005.jpg", width = 6)
+ggsave("map_2005.pdf", width = 6)
+```
+
+
+
+Make a 1985 map:
+```{r}
+world1985<-cshp(as.Date("1985-1-1"), useGW=FALSE)
+p <- ggplot() +
+  geom_polygon(data=world1985, aes(x=long, y=lat, group=group), fill="grey85", color="white")
+#geon_polygon is making the base boarder for world map. By assigning group, we make R draw lines only withing each country.
+p
+
+worldmap <- p+theme(axis.text=element_blank(),
+              axis.ticks=element_blank(),
+              axis.title.x=element_blank(),
+              axis.title.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.border = element_blank(),
+              panel.background = element_blank())
+#We made better map without grey background and useless longitude and latitude axes.
+worldmap
+```
+
+Get troops data and the coordinates for capitals in 1985:
+```{r}
+capitals1985<-world1985@data
+
+troops<-read.csv("spattroops_data01.csv",header=T)
+troops<-subset(troops,select=-c(cow_mid4,hostlev),subset=troops>0)
+troops1985<-troops[troops$year==1985,]
+#Generate a cname variable to fix some country names:
+troops1985$cname<-troops1985$country
+levels(troops1985$cname)[levels(troops1985$cname)=="German Democratic Republic (East Germany)"]<-"Germany Democratic Republic"
+levels(troops1985$cname)[levels(troops1985$cname)=="German Federal Republic (West Germany)"]<-"Germany Federal Republic"
+levels(troops1985$cname)[levels(troops1985$cname)=="Vietnam or North Vietnam"]<-"Vietnam"
+levels(troops1985$cname)[levels(troops1985$cname)=="Yemen Arab Republic (North Yemen)"]<-"Yemen Arab Republic"
+levels(troops1985$cname)[levels(troops1985$cname)=="Yugoslavia or Serbia"]<-"Yugoslavia"
+levels(troops1985$cname)[levels(troops1985$cname)=="Ivory Coast"]<-"Cote d'Ivoire"
+
+
+SouthKorea<-cbind.data.frame(major=c("2"), cname="South Korea")
+
+
+
+troops1985<-rbind(subset(troops1985, select=c("major","cname") ), SouthKorea)
+
+troops1985<-left_join(troops1985, capitals1985, by=c("cname"="CNTRY_NAME"))
+troops1985$maj_name[troops1985$major==2]<-"US"
+troops1985$maj_name[troops1985$major==365]<-"Soviet Union"
+troops1985$maj_name[troops1985$major==200]<-"UK"
+troops1985$maj_name[troops1985$major==220]<-"France"
+
+troops1985$long_jit<-troops1985$CAPLONG
+#troops1985$long_jit[troops1985$cname=="Germany" & troops1985$major==2]<-troops1985$long_jit[troops1985$cname=="Germany" & troops1985$major==2]-1
+troops1985$long_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==200]<-troops1985$long_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==200]-3
+troops1985$long_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==220]<-troops1985$long_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==220]-3
+
+troops1985$long_jit[troops1985$cname=="Cuba" & troops1985$major==2]<-troops1985$long_jit[troops1985$cname=="Cuba" & troops1985$major==2]+4
+
+
+troops1985$lat_jit<-troops1985$CAPLAT
+troops1985$lat_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==2]<-troops1985$lat_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==2]-1.5
+troops1985$lat_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==200]<-troops1985$lat_jit[troops1985$cname=="Germany Federal Republic" & troops1985$major==200]-1.5
+#troops1985$long_jit[troops1985$cname=="Germany" & troops1985$major==220]<-troops1985$long_jit[troops1985$cname=="Germany" & troops1985$major==220]-3
+
+troops1985$lat_jit[troops1985$cname=="Egypt" & troops1985$major==200]<-troops1985$lat_jit[troops1985$cname=="Egypt" & troops1985$major==200]-1.5
+
+
+
+```
+
+Make the 1985 map:
+```{r}
+worldmap +
+  geom_jitter(aes(x=CAPLONG, y=CAPLAT,  colour=as.factor(maj_name),shape=as.factor(maj_name)), width=1, height=1,data=troops1985) +
+          theme(legend.position="bottom") + 
+					scale_shape_manual(values = c(15, 16, 17, 18)) +
+					scale_colour_manual(values = c("purple","black", "blue","red")) +
+					theme(legend.title=element_blank())
+ggsave("map_1985_legacy.eps")
+ggsave("map_1985_legacy.png")
+
+
+#img <- readPNG("./pics/greencanon1.png")
+#greencanon <- rasterGrob(img, interpolate=TRUE, height=.05)
+#qplot(1:10, 1:10, geom="blank") +
+#  annotation_custom(bluecanon, xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) +
+#  geom_point()
+
+
+worldmap +
+  geom_bluecanon(aes(x=long_jit, y=lat_jit ), data=troops1985[troops1985$major==2,], size=.03) +
+  geom_redcanon(aes(x=long_jit, y=lat_jit), data=troops1985[troops1985$major==365,] ,size=.03) +
+  geom_blkhorse(aes(x=long_jit, y=lat_jit), data=troops1985[troops1985$major==200,] ,size=.03) +
+  geom_grnhorse(aes(x=long_jit, y=lat_jit), data=troops1985[troops1985$major==220,] ,size=.03)
+ggsave("map_1985.eps")
+ggsave("map_1985.jpg", width = 6)
+ggsave("map_1985.pdf", width = 6)
+
+
+```
+
